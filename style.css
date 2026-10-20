@@ -438,6 +438,32 @@ main {
     padding: 6px;
 }
 
+/* Estilo para os botões de seleção de frações no modal */
+.active-fracao {
+    background: var(--red) !important;
+    color: #fff !important;
+    border-color: var(--red) !important;
+}
+
+.sabor-row {
+    margin-bottom: 10px;
+}
+
+.select-sabor {
+    width: 100%;
+    border: 2px solid var(--line);
+    border-radius: 10px;
+    padding: 10px;
+    font: 600 0.9rem 'Nunito', sans-serif;
+    background: #fff;
+    margin-top: 4px;
+    outline: none;
+}
+
+.select-sabor:focus {
+    border-color: var(--green);
+}
+
 @media (prefers-reduced-motion: no-preference) {
     .sheet {
         animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
