@@ -2,7 +2,16 @@
 const CONFIG = {
   nome: 'Zipittus Pizzaria Forno à Lenha',
   info: 'Quarta a domingo, das 18h às 22h30 · Entrega e retirada',
-  whatsapp: '5519999999999', // Digite o WhatsApp oficial aqui (DDI + DDD + Número)
+  whatsapp: '5519991705884',
+  bairros: [
+    { nome: 'Centro', taxa: 5.0 },
+    { nome: 'Jardim Paulista', taxa: 5.0 },
+    { nome: 'Vila Nova', taxa: 6.0 },
+    { nome: 'Jardim das Flores', taxa: 7.0 },
+    { nome: 'vale2', taxa: 8.0 },
+    { nome: 'Santo Antônio', taxa: 6.0 },
+    { nome: 'Cassuci', taxa: 8.0 },
+  ],
 
   // Categorias do Cardápio
   categorias: [
@@ -11,6 +20,7 @@ const CONFIG = {
       nome: '🍕 Pizzas Salgadas',
       tamanhos: ['Grande', 'Média', 'Pequena'],
       hasSizes: true,
+      isPizzaType: true,
       itens: [
         ['001', 'MUSSARELA', 'mussarela, rodelas de tomate', 56.0],
         ['002', 'MARGUERITA', 'mussarela, rodelas de tomate, parmesão, manjericão', 62.0],
@@ -103,6 +113,7 @@ const CONFIG = {
       nome: '🧀 Bordas Recheadas',
       tamanhos: ['Adicional'],
       hasSizes: false,
+      isPizzaType: false,
       itens: [
         ['100', 'Borda de Catupiry', 'Recheio cremoso sabor Catupiry', 19.0],
         ['101', 'Borda de Cheddar', 'Cheddar especial para borda', 22.0],
@@ -120,6 +131,7 @@ const CONFIG = {
       nome: '🍫 Pizzas Doces',
       tamanhos: ['Grande', 'Média', 'Pequena'],
       hasSizes: true,
+      isPizzaType: true,
       itens: [
         ['951', 'DOCE DE LEITE COM MORANGO', 'doce de leite, morango, chocolate meio amargo, creme de leite', 48.0],
         ['952', 'BANANA', 'goiabada, mussarela, banana, mel e canela', 45.0],
@@ -136,39 +148,21 @@ const CONFIG = {
         ['963', 'MAÇÃ', 'mussarela, maçãs fatiadas com leve toque de leite condensado e canela', 45.0],
       ],
     },
-    {
-      id: 'saladas',
-      nome: '🥗 Saladas & Petiscos',
-      tamanhos: ['Porção'],
-      hasSizes: false,
-      itens: [
-        ['156', 'SALADA ZIPITTUS', 'alface crocante, rúcula, tomate seco, palmito, azeitonas pretas e crótons', 35.0],
-        ['157', 'SALADA CAPRESE', 'tomate caqui, mussarela de búfala artesanal, manjericão, pesto de azeitonas, azeite', 25.0],
-        ['158', 'SALADA LIGHT', 'alface americana, peito de peru, tomate seco, ricota de búfala artesanal, molho de ervas', 25.0],
-        ['159', 'SALADA TROPICAL', 'alface, frango desfiado, cenoura, mussarela búfala, tomate morango, batata palha, molho queijo', 25.0],
-        ['151', 'PORÇÃO DE PROVOLONE', 'fatias de queijo provolone aperitivo', 28.0],
-        ['152', 'PORÇÃO DE PARMESÃO', 'queijo parmesão em cubos/fatias', 32.0],
-        ['153', 'PORÇÃO DE PALMITO', 'palmito de primeira qualidade em rodelas', 30.0],
-        ['154', 'AZEITONAS CHILENAS', 'porção de azeitonas pretas selecionadas', 20.0],
-        ['155', 'APERITIVO ZIPITTUS', 'massa crocante com molho especial, gorgonzola, parmesão e alho', 32.0],
-      ],
-    },
+
     {
       id: 'bebidas',
       nome: '🥤 Bebidas & Cervejas',
       tamanhos: ['Unidade'],
       hasSizes: false,
+      isPizzaType: false,
       itens: [
         ['200', 'Água sem Gás', 'Garrafa 500ml', 6.0],
         ['201', 'Água com Gás', 'Garrafa 500ml', 6.0],
         ['202', 'Refrigerante Lata', '350ml (Coca-Cola, Guaraná, Fanta, Sprite)', 7.5],
-        ['203', 'Refrigerante 2L', 'Garrafa 2 Litros', 15.0],
+        ['203', 'Refrigerante 2L', 'Garrafa 2 Litros', 16.0],
         ['204', 'H2O / Schweppes Citrus', 'Garrafa 500ml', 9.0],
         ['205', 'Suco Natural (Copo)', 'Laranja ou Limão', 10.0],
         ['206', 'Suco Natural (Jarra)', 'Laranja ou Limão', 22.0],
-        ['403', 'Cerveja Antarctica 600ml', 'Garrafa 600ml', 14.0],
-        ['404', 'Cerveja Original 600ml', 'Garrafa 600ml', 16.0],
-        ['437', 'Cerveja Heineken 600ml', 'Garrafa 600ml', 18.0],
         ['417', 'Heineken Long Neck', '330ml', 11.0],
         ['408', 'Corona Long Neck', '330ml', 12.0],
       ],
@@ -178,18 +172,27 @@ const CONFIG = {
 
 const R = (v) => 'R$ ' + v.toFixed(2).replace('.', ',');
 const $ = (id) => document.getElementById(id);
-const cart = {}; // armazena o pedido por chave: "cod|tamanho"
+const cart = {};
+
+let taxaEntrega = 0.0;
+let bairroSelecionado = null;
+
+let montagemAtual = {
+  catId: null,
+  tamanho: 'Grande',
+  qtdSabores: 1,
+  sabores: [],
+  indexEditando: null,
+};
 
 const nav = $('nav'),
   menu = $('menu');
 
-// Inicializa a construção da interface
 function buildMenu() {
   nav.innerHTML = '';
   menu.innerHTML = '';
 
-  CONFIG.categorias.forEach((cat, ci) => {
-    // Cria Botão do Nav
+  CONFIG.categorias.forEach((cat) => {
     const b = document.createElement('button');
     b.id = 'btn-nav-' + cat.id;
     b.innerHTML = cat.nome;
@@ -199,7 +202,6 @@ function buildMenu() {
     };
     nav.appendChild(b);
 
-    // Cria Seção no Menu
     const h = document.createElement('h2');
     h.className = 'cat-title';
     h.id = 'cat-' + cat.id;
@@ -223,24 +225,26 @@ function buildMenu() {
       const optsEl = itemEl.querySelector('.opts');
 
       if (cat.hasSizes) {
-        // Opções Grande, Média (-2.00), Pequena (-5.00)
-        const tamanhos = [
-          { nome: 'Grande', desc: 'Grande', preco: precoG },
-          { nome: 'Média', desc: 'Média (-R$2)', preco: precoG - 2.0 },
-          { nome: 'Pequena', desc: 'Pequena (-R$5)', preco: precoG - 5.0 },
-        ];
+        const btnG = document.createElement('button');
+        btnG.innerHTML = `<span class="tam">Grande</span>${R(precoG)}`;
+        btnG.onclick = () => iniciarMontagemPizza(cat.id, cod, nome, precoG, 'Grande');
+        optsEl.appendChild(btnG);
 
-        tamanhos.forEach((t) => {
-          const btn = document.createElement('button');
-          btn.innerHTML = `<span class="tam">${t.desc}</span>${R(t.preco)}`;
-          btn.onclick = () => add(cod, nome, t.nome, t.preco);
-          optsEl.appendChild(btn);
-        });
+        const btnM = document.createElement('button');
+        btnM.innerHTML = `<span class="tam">Média (-R$2)</span>${R(precoG - 2.0)}`;
+        btnM.onclick = () => iniciarMontagemPizza(cat.id, cod, nome, precoG, 'Média');
+        optsEl.appendChild(btnM);
+
+        const btnP = document.createElement('button');
+        btnP.innerHTML = `<span class="tam">Pequena (-R$5)</span>${R(precoG - 5.0)}`;
+        btnP.onclick = () => {
+          addPizzaDireta(cat.id, [[cod, nome, precoG]], 'Pequena');
+        };
+        optsEl.appendChild(btnP);
       } else {
-        // Preço único
         const btn = document.createElement('button');
         btn.innerHTML = `<span class="tam">${cat.tamanhos[0]}</span>${R(precoG)}`;
-        btn.onclick = () => add(cod, nome, cat.tamanhos[0], precoG);
+        btn.onclick = () => addSimples(cod, nome, cat.tamanhos[0], precoG);
         optsEl.appendChild(btn);
       }
 
@@ -249,7 +253,282 @@ function buildMenu() {
   });
 }
 
-// Filtro de busca em tempo real
+function carregarListaBairros() {
+  const selectBairro = $('select-bairro');
+  if (!selectBairro) return;
+
+  selectBairro.innerHTML = '<option value="">-- Escolha seu bairro --</option>';
+  CONFIG.bairros.forEach((b) => {
+    const opt = document.createElement('option');
+    opt.value = b.taxa;
+    opt.dataset.nome = b.nome;
+    opt.textContent = `${b.nome} (+${R(b.taxa)})`;
+    selectBairro.appendChild(opt);
+  });
+}
+
+function alternarTipoEntrega() {
+  const tipo = $('tipo-entrega').value;
+  const boxBairro = $('box-bairro');
+  const campoEnd = $('end');
+
+  if (tipo === 'retirada') {
+    boxBairro.style.display = 'none';
+    taxaEntrega = 0.0;
+    bairroSelecionado = 'Retirada no Balcão';
+    campoEnd.placeholder = 'Ponto de referência (Opcional)';
+  } else {
+    boxBairro.style.display = 'block';
+    campoEnd.placeholder = 'Rua, Número e Complemento';
+    atualizarTaxaPorBairro();
+  }
+  updateCart();
+}
+
+function atualizarTaxaPorBairro() {
+  const selectBairro = $('select-bairro');
+  if (selectBairro && selectBairro.selectedIndex > 0) {
+    taxaEntrega = parseFloat(selectBairro.value);
+    bairroSelecionado = selectBairro.options[selectBairro.selectedIndex].dataset.nome;
+  } else {
+    taxaEntrega = 0.0;
+    bairroSelecionado = null;
+  }
+  updateCart();
+}
+
+function iniciarMontagemPizza(catId, codInicial, nomeInicial, precoInicial, tamanhoEscolhido, editKey = null) {
+  montagemAtual = {
+    catId: catId,
+    tamanho: tamanhoEscolhido,
+    qtdSabores: 1,
+    sabores: [[codInicial, nomeInicial, precoInicial]],
+    indexEditando: editKey,
+  };
+  abrirModalFracao();
+}
+
+function abrirModalFracao() {
+  let modal = $('modal-fracao');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-fracao';
+    modal.className = 'veil show';
+    document.body.appendChild(modal);
+  } else {
+    modal.classList.add('show');
+  }
+  renderizarConteudoModalFracao();
+}
+
+function renderizarConteudoModalFracao() {
+  const modal = $('modal-fracao');
+  const catSalgadas = CONFIG.categorias.find((c) => c.id === 'salgadas');
+  const catDoces = CONFIG.categorias.find((c) => c.id === 'doces');
+  const todasAsPizzas = [...catSalgadas.itens, ...catDoces.itens];
+
+  let saboresHtml = '';
+  for (let i = 0; i < montagemAtual.qtdSabores; i++) {
+    const saborAtual = montagemAtual.sabores[i] || montagemAtual.sabores[0];
+    saboresHtml += `
+      <div class="sabor-row">
+        <label><strong>Sabor ${i + 1}:</strong></label>
+        <select class="select-sabor" data-index="${i}">
+          ${todasAsPizzas.map(([c, n, d, p]) => `<option value="${c}" ${saborAtual[0] === c ? 'selected' : ''}>#${c} - ${n} (${R(p)})</option>`).join('')}
+        </select>
+      </div>
+    `;
+  }
+
+  modal.innerHTML = `
+    <div class="sheet" role="dialog">
+      <h2>🍕 ${montagemAtual.indexEditando ? 'Editar Pizza' : 'Montar Pizza'} (${montagemAtual.tamanho})</h2>
+      <p style="font-size:0.85rem; color:#6a584d; margin-bottom:12px;">Escolha quantos sabores sua pizza ${montagemAtual.tamanho} vai ter:</p>
+      
+      <div class="opts" style="margin-bottom:16px;">
+        <button type="button" class="${montagemAtual.qtdSabores === 1 ? 'active-fracao' : ''}" onclick="mudarQtdSabores(1)">1 Sabor (Inteira)</button>
+        <button type="button" class="${montagemAtual.qtdSabores === 2 ? 'active-fracao' : ''}" onclick="mudarQtdSabores(2)">2 Sabores (1/2)</button>
+        <button type="button" class="${montagemAtual.qtdSabores === 3 ? 'active-fracao' : ''}" onclick="mudarQtdSabores(3)">3 Sabores (1/3)</button>
+      </div>
+
+      <div id="lista-sabores-container">${saboresHtml}</div>
+
+      <div style="margin: 16px 0; font-weight:800; font-size:1.1rem; text-align:center; color:var(--green);" id="preview-preco">
+        Preço calculado: ${R(calcularPrecoAtual())}
+      </div>
+
+      <button class="send" onclick="salvarPizzaMontada()">✅ ${montagemAtual.indexEditando ? 'Salvar Alterações' : 'Adicionar ao Pedido'}</button>
+      <button class="close" onclick="$('modal-fracao').classList.remove('show')">Cancelar</button>
+    </div>
+  `;
+
+  modal.querySelectorAll('.select-sabor').forEach((sel) => {
+    sel.onchange = (e) => {
+      const idx = parseInt(e.target.dataset.index);
+      const cod = e.target.value;
+      const itemData = todasAsPizzas.find((it) => it[0] === cod);
+      montagemAtual.sabores[idx] = [itemData[0], itemData[1], itemData[3]];
+      document.getElementById('preview-preco').textContent = 'Preço calculado: ' + R(calcularPrecoAtual());
+    };
+  });
+}
+
+function mudarQtdSabores(qtd) {
+  montagemAtual.qtdSabores = qtd;
+  while (montagemAtual.sabores.length < qtd) {
+    montagemAtual.sabores.push(montagemAtual.sabores[0]);
+  }
+  montagemAtual.sabores = montagemAtual.sabores.slice(0, qtd);
+  renderizarConteudoModalFracao();
+}
+
+function calcularPrecoAtual() {
+  let maiorPreco = 0;
+  montagemAtual.sabores.forEach((s) => {
+    if (s[2] > maiorPreco) maiorPreco = s[2];
+  });
+  if (montagemAtual.tamanho === 'Média') maiorPreco -= 2.0;
+  if (montagemAtual.tamanho === 'Pequena') maiorPreco -= 5.0;
+  return maiorPreco > 0 ? maiorPreco : 0;
+}
+
+function salvarPizzaMontada() {
+  const precoFinal = calcularPrecoAtual();
+  const nomesSabores = montagemAtual.sabores.map((s) => `#${s[0]} ${s[1]}`).join(' / ');
+  const nomeCompleto = `Pizza ${montagemAtual.tamanho} (${montagemAtual.sabores.length} Sabor${montagemAtual.sabores.length > 1 ? 'es' : ''}: ${nomesSabores})`;
+
+  if (montagemAtual.indexEditando) {
+    delete cart[montagemAtual.indexEditando];
+  }
+
+  const chaveCarrinho = `${montagemAtual.catId}|${montagemAtual.tamanho}|${nomesSabores}`;
+  if (!cart[chaveCarrinho]) {
+    cart[chaveCarrinho] = {
+      nome: nomeCompleto,
+      tam: montagemAtual.tamanho,
+      preco: precoFinal,
+      q: 0,
+      isPizzaFracionada: true,
+      catId: montagemAtual.catId,
+      saboresOriginais: [...montagemAtual.sabores],
+    };
+  }
+  cart[chaveCarrinho].q++;
+
+  $('modal-fracao').classList.remove('show');
+  updateCart();
+}
+
+function addPizzaDireta(catId, sabores, tamanho) {
+  const precoBase = sabores[0][2];
+  let precoFinal = precoBase;
+  if (tamanho === 'Média') precoFinal -= 2.0;
+  if (tamanho === 'Pequena') precoFinal -= 5.0;
+
+  const nomeCompleto = `Pizza ${tamanho} (#${sabores[0][0]} ${sabores[0][1]})`;
+  const chave = `${catId}|${tamanho}|${sabores[0][0]}`;
+
+  if (!cart[chave]) {
+    cart[chave] = { nome: nomeCompleto, tam: tamanho, preco: precoFinal, q: 0 };
+  }
+  cart[chave].q++;
+  updateCart();
+}
+
+function addSimples(cod, nome, tam, preco) {
+  const k = `${cod}|${tam}`;
+  if (!cart[k]) {
+    cart[k] = { nome: `#${cod} ${nome}`, tam: tam, preco: preco, q: 0 };
+  }
+  cart[k].q++;
+  updateCart();
+}
+
+function change(k, d) {
+  if (cart[k]) {
+    cart[k].q += d;
+    if (cart[k].q <= 0) delete cart[k];
+    updateCart();
+  }
+}
+
+function editarItemCarrinho(k) {
+  const item = cart[k];
+  if (item && item.isPizzaFracionada) {
+    montagemAtual = {
+      catId: item.catId,
+      tamanho: item.tam,
+      qtdSabores: item.saboresOriginais.length,
+      sabores: JSON.parse(JSON.stringify(item.saboresOriginais)),
+      indexEditando: k,
+    };
+    abrirModalFracao();
+  }
+}
+
+function updateCart() {
+  const keys = Object.keys(cart);
+  const totalQtd = keys.reduce((s, k) => s + cart[k].q, 0);
+  const subtotalVal = keys.reduce((s, k) => s + cart[k].q * cart[k].preco, 0);
+  const totalVal = subtotalVal > 0 ? subtotalVal + taxaEntrega : 0;
+
+  $('bar').classList.toggle('show', totalQtd > 0);
+  $('qtd').textContent = `Ver pedido (${totalQtd} ${totalQtd === 1 ? 'item' : 'itens'})`;
+  $('sub').textContent = R(subtotalVal);
+  $('total').textContent = R(totalVal);
+
+  const lista = $('lista');
+  lista.innerHTML = '';
+
+  if (keys.length === 0) {
+    lista.innerHTML = "<p style='text-align:center; color:#8c7365; padding:20px 0;'>Seu carrinho está vazio.</p>";
+  } else {
+    keys.forEach((k) => {
+      const item = cart[k];
+      const row = document.createElement('div');
+      row.className = 'row';
+
+      let botaoEditar = '';
+      if (item.isPizzaFracionada) {
+        botaoEditar = `<button type="button" onclick="editarItemCarrinho('${k}')" style="background:none; border:none; color:var(--green); font-size:0.75rem; font-weight:800; cursor:pointer; padding:0; margin-top:2px;">✏️ Editar sabores</button>`;
+      }
+
+      row.innerHTML = `
+        <div>
+          <strong>${item.nome}</strong><br>
+          <small>${R(item.preco)} cada</small><br>
+          ${botaoEditar}
+        </div>
+        <div class="qty">
+          <button onclick="change('${k}', -1)">−</button>
+          <span>${item.q}</span>
+          <button onclick="change('${k}', 1)">+</button>
+        </div>
+      `;
+      lista.appendChild(row);
+    });
+
+    // Linha Informativa da Taxa no Carrinho
+    const tipo = $('tipo-entrega') ? $('tipo-entrega').value : 'entrega';
+    const rowTaxa = document.createElement('div');
+    rowTaxa.className = 'row';
+    rowTaxa.style.background = '#fcf8f5';
+    rowTaxa.style.padding = '8px 10px';
+    rowTaxa.style.borderRadius = '8px';
+
+    if (tipo === 'retirada') {
+      rowTaxa.innerHTML = `<div><strong>🏪 Retirada no Balcão</strong></div><div style="font-weight:800; color:var(--green);">R$ 0,00</div>`;
+    } else {
+      rowTaxa.innerHTML = `<div><strong>🛵 Taxa de Entrega (${bairroSelecionado || 'Selecione o Bairro'})</strong></div><div style="font-weight:800; color:var(--red);">${R(taxaEntrega)}</div>`;
+    }
+    lista.appendChild(rowTaxa);
+  }
+
+  if (totalQtd === 0) {
+    $('veil').classList.remove('show');
+  }
+}
+
 function filterItems() {
   const q = $('search').value.toLowerCase().trim();
   const items = document.querySelectorAll('.item');
@@ -259,7 +538,6 @@ function filterItems() {
   });
 }
 
-// Observador de rolagem para destacar botão ativo na barra superior
 const io = new IntersectionObserver(
   (entries) => {
     entries.forEach((e) => {
@@ -276,74 +554,13 @@ const io = new IntersectionObserver(
   { rootMargin: '-70px 0px -60% 0px' }
 );
 
-// Adicionar ao carrinho
-function add(cod, nome, tam, preco) {
-  const k = `${cod}|${tam}`;
-  if (!cart[k]) {
-    cart[k] = { cod, nome, tam, preco, q: 0 };
-  }
-  cart[k].q++;
-  updateCart();
-}
-
-// Alterar quantidade
-function change(k, d) {
-  if (cart[k]) {
-    cart[k].q += d;
-    if (cart[k].q <= 0) delete cart[k];
-    updateCart();
-  }
-}
-
-// Atualizar modal e barra inferior
-function updateCart() {
-  const keys = Object.keys(cart);
-  const totalQtd = keys.reduce((s, k) => s + cart[k].q, 0);
-  const totalVal = keys.reduce((s, k) => s + cart[k].q * cart[k].preco, 0);
-
-  $('bar').classList.toggle('show', totalQtd > 0);
-  $('qtd').textContent = `Ver pedido (${totalQtd} ${totalQtd === 1 ? 'item' : 'itens'})`;
-  $('sub').textContent = R(totalVal);
-  $('total').textContent = R(totalVal);
-
-  const lista = $('lista');
-  lista.innerHTML = '';
-
-  if (keys.length === 0) {
-    lista.innerHTML = "<p style='text-align:center; color:#8c7365; padding:20px 0;'>Seu carrinho está vazio.</p>";
-  }
-
-  keys.forEach((k) => {
-    const item = cart[k];
-    const row = document.createElement('div');
-    row.className = 'row';
-    row.innerHTML = `
-      <div>
-        <strong>#${item.cod} ${item.nome}</strong><br>
-        <small>${item.tam ? item.tam + ' · ' : ''}${R(item.preco)} cada</small>
-      </div>
-      <div class="qty">
-        <button onclick="change('${k}', -1)">−</button>
-        <span>${item.q}</span>
-        <button onclick="change('${k}', 1)">+</button>
-      </div>
-    `;
-    lista.appendChild(row);
-  });
-
-  if (totalQtd === 0) {
-    $('veil').classList.remove('show');
-  }
-}
-
-// Eventos dos botões de navegação e modal
 $('abrir').onclick = () => $('veil').classList.add('show');
 $('fechar').onclick = () => $('veil').classList.remove('show');
 $('veil').onclick = (e) => {
   if (e.target === $('veil')) $('veil').classList.remove('show');
 };
 
-// Enviar pedido para o WhatsApp
+// ENVIAR PEDIDO PARA O WHATSAPP
 $('enviar').onclick = () => {
   const keys = Object.keys(cart);
   if (keys.length === 0) return;
@@ -351,38 +568,79 @@ $('enviar').onclick = () => {
   const nome = $('cli').value.trim();
   const end = $('end').value.trim();
   const obs = $('obs').value.trim();
+  const tipo = $('tipo-entrega').value;
 
-  if (!nome || !end) {
-    alert('Por favor, preencha seu nome e endereço para que possamos realizar a entrega!');
+  if (!nome) {
+    alert('Por favor, preencha seu nome!');
     return;
   }
 
-  let total = 0;
-  let msg = `🍕 *NOVO PEDIDO - ZIPITTUS PIZZARIA* 🍕\n\n`;
-  msg += `👤 *Cliente:* ${nome}\n`;
-  msg += `📍 *Endereço:* ${end}\n`;
-  if (obs) msg += `📝 *Obs:* ${obs}\n`;
+  if (tipo === 'entrega') {
+    if (!bairroSelecionado) {
+      alert('Por favor, selecione seu bairro para calcular a entrega!');
+      return;
+    }
+    if (!end) {
+      alert('Por favor, preencha o endereço de entrega (Rua e Número)!');
+      return;
+    }
+  }
+
+  let subtotal = 0;
+  let msg = `*NOVO PEDIDO - ZIPITTUS PIZZARIA*\n\n`;
+  msg += `*Cliente:* ${nome}\n`;
+
+  if (tipo === 'retirada') {
+    msg += `*Tipo:* Retirada no Balcão (Sem taxa)\n`;
+  } else {
+    msg += `*Endereço:* ${end}\n`;
+    msg += `*Bairro:* ${bairroSelecionado}\n`;
+  }
+
+  if (obs) msg += `*Obs:* ${obs}\n`;
   msg += `-----------------------------------\n\n`;
   msg += `*ITENS DO PEDIDO:*\n`;
 
   keys.forEach((k) => {
     const item = cart[k];
     const sub = item.q * item.preco;
-    total += sub;
-    msg += `• *${item.q}x* #${item.cod} ${item.nome} (${item.tam}) - ${R(sub)}\n`;
+    subtotal += sub;
+    msg += `• *${item.q}x* ${item.nome} - ${R(sub)}\n`;
   });
 
+  const totalGeral = subtotal + taxaEntrega;
+
   msg += `\n-----------------------------------\n`;
-  msg += `💰 *TOTAL: ${R(total)}*\n\n`;
-  msg += `Obrigado por pedir na Zipittus! 🍕✨`;
+  msg += `Subtotal: ${R(subtotal)}\n`;
+
+  if (tipo === 'retirada') {
+    msg += `Taxa de Entrega: R$ 0,00 (Retirada)\n`;
+  } else {
+    msg += `Taxa de Entrega (${bairroSelecionado}): ${R(taxaEntrega)}\n`;
+  }
+
+  msg += `*TOTAL GERAL: ${R(totalGeral)}*\n\n`;
 
   const url = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`;
-  window.open(url, '_blank');
-};
 
-// Inicialização da Página
+  // 1. Abre a conversa no WhatsApp
+  window.open(url, '_blank');
+
+  // 2. Limpa os itens do carrinho
+  Object.keys(cart).forEach((k) => delete cart[k]);
+
+  // 3. Limpa os campos do formulário
+  $('cli').value = '';
+  $('end').value = '';
+  $('obs').value = '';
+
+  // 4. Atualiza a tela e fecha o modal de pedido
+  updateCart();
+  $('veil').classList.remove('show');
+};
 window.onload = () => {
   buildMenu();
+  carregarListaBairros();
   CONFIG.categorias.forEach((cat) => {
     const el = $('cat-' + cat.id);
     if (el) io.observe(el);
